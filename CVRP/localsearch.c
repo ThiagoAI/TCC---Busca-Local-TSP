@@ -1,0 +1,524 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#include "localsearch.h"
+#include "point.h"
+
+/*
+ * SEÇÃO DE STRUCTS
+ */
+
+//Struct para os pontos
+typedef struct customer_struct{
+  struct customer_struct* next;
+  point* point;
+  int demand;
+  int id;
+}customer;
+
+//Cria customer (ponto)
+customer* create_customer(point* p,int i){
+  customer* new_customer = (customer*)malloc(sizeof(customer));
+  new_customer->id = i;
+  new_customer->next = NULL;
+  new_customer->point = p;
+  new_customer->demand = p->demand;
+}
+
+//Estrutura do caminhão
+typedef struct truck_struct { 
+    struct truck_struct* next; 
+    customer* customers;
+    int n_customers;
+    int total_demand;
+    int id;
+}truck;
+
+//Deletar a lista
+truck* delete_trucks(truck* trucks){
+
+  truck* temp; 
+  while(trucks != NULL){
+    temp = trucks->next;
+    free(trucks->customers);
+    free(trucks);
+    trucks = temp;
+  }
+
+}
+
+//Criar caminhão novo
+truck* create_truck(int i){
+  truck* new_truck = (truck*)malloc(sizeof(truck));
+  new_truck->next = NULL;
+  new_truck->id = i;
+  new_truck->customers = NULL;
+  new_truck->n_customers = 0;
+  new_truck->total_demand = 0;
+  return new_truck;
+}
+
+void print_trucks(truck* trucks){
+  int i = 0;
+  customer* c;
+  truck* t = trucks;
+  
+  while(t != NULL){
+    printf("Truck %d %d %d:\n",t->id,t->total_demand,t->n_customers);
+    c = t->customers;
+    
+    while(c != NULL){
+      printf("Customer %d | %lf %lf | %d\n",c->id,c->point->x,c->point->y,c->demand);
+      c = c->next;
+    }
+    
+    t = t->next;
+    printf("\n");
+  }
+}
+
+/*
+ * FIM DA SEÇÃO DE STRUCTS
+ */
+
+//Para retornar valor final da local search
+int add_distances(truck* original_trucks,point* depot){
+  int i = 0;
+  int total = 0;
+  truck* trucks = original_trucks;
+  customer* c = trucks->customers;
+  
+  //Somamos o valor da lista,incluindo depot
+  while(trucks != NULL){
+      //printf("Caminhao %d: %d | %d\n",i,trucks->total_demand,trucks->n_customers);
+      c = trucks->customers;
+      
+      //Temos de verificar se há algum customer dentro primeiro, pode acontecer de chamar antes de eliminar o caminhão
+      if(c != NULL){
+        total += euclidian_distance(depot,c->point);
+      
+        while(c->next != NULL){
+          //printf("%d ! %lf %lf !\n",i,c->point->x,c->point->y);
+          total += euclidian_distance(c->point,c->next->point);
+          c = c->next;
+         }
+         
+        //printf("%d ! %lf %lf !\n",i,c->point->x,c->point->y);
+        i++;
+        total += euclidian_distance(c->point,depot);
+        
+        //Do if
+        }
+        
+       trucks = trucks->next;
+    }
+   
+  //printf("TOTAL: %d\n",total);  
+  return total;
+}
+
+//Insere customer c no primeiro lugar que for melhor que o anterior
+int insert_customer(truck* trucks,truck* t,customer* c,point* depot,int capacity){
+  //Para comparação
+  int original_total = 0;
+  //Se achar um lugar melhor e inserir, condition vai ser 1, do contrário 0
+  int condition = 0;
+  
+  //Para navegar as listas
+  customer* temp_c = t->customers;
+  truck* temp_truck = trucks;
+  
+  //Para guardar se não acharmos um lugar melhor
+  customer* guard;
+  customer* guard_next = c->next;
+  customer* guard_other;
+  
+  //Pegamos o valor original do caminhão de origem
+  original_total = add_distances(trucks,depot);
+  
+  //Remove do original e guardamos onde era
+  //Se for o primero entra no if
+  
+
+  //printf("!! %d %d %d\n\n\n",t->id,c->id,t->customers->id);
+  //print_trucks(trucks);
+  if(t->customers->id == c->id){
+    guard = c;
+    t->customers = t->customers->next;
+    t->n_customers--;
+    t->total_demand -= c->demand;
+  }
+  else{
+    temp_c = t->customers;
+    while(temp_c->next->id != c->id){
+     temp_c = temp_c->next;
+    }
+    
+    guard = temp_c;
+    temp_c->next = c->next;
+    t->n_customers--;
+    t->total_demand -= c->demand;
+  }
+
+  
+  //Primeiro verificamos o caminhão de origem
+  temp_c = t->customers;
+  while(temp_c != NULL){
+    c->next = temp_c->next;
+    temp_c->next = c;
+    t->n_customers++;
+    t->total_demand += c->demand;
+    int new_total = add_distances(trucks,depot);
+    
+    //Se for melhor entra no if e retorna sucesso
+    if(new_total < original_total){
+      return 1;  
+    }
+    else{
+      temp_c->next = c->next;
+      c->next = guard->next;
+      t->n_customers--;
+      t->total_demand -= c->demand;
+    }
+    
+    temp_c = temp_c->next;
+  }
+  
+
+  //print_trucks(trucks);
+  //Agora os outros caminhões
+  temp_truck = trucks;
+ 
+  while(temp_truck != NULL){
+    if(temp_truck->id != t->id && temp_truck->total_demand + c->demand <= capacity){
+      temp_truck->n_customers++;
+      temp_truck->total_demand += c->demand;
+      
+      //Primeiro verificamos se for o primeiro
+      //Guardamos o original
+      temp_c = temp_truck->customers;
+      guard_other = temp_c;
+      
+      //Verificamos se é melhor na primeira casa, se sim retorna 1 do contrário desfazemos
+      c->next = temp_c;
+      temp_truck->customers = c;
+      int new_total = add_distances(trucks,depot);
+      if(new_total < original_total) return 1;
+      else{
+        
+        temp_truck->customers = guard_other;
+      }
+      
+      //Agora se não for o primeiro
+      while(temp_c != NULL){
+        c->next = temp_c->next;
+        temp_c->next = c;
+        
+        int new_total = add_distances(trucks,depot);
+        
+        //Se for melhor entra no if e retorna
+        if(new_total < original_total) return 1;
+        else{
+        temp_c->next = c->next;
+        }
+        
+        temp_c = temp_c->next;
+      //Do while de customers  
+      }
+      
+      //Se chegou aqui não era melhor nesse caminhão
+      temp_truck->n_customers--;
+      temp_truck->total_demand -= c->demand;
+    //Do if  
+    } 
+    
+    temp_truck = temp_truck->next;
+  //Do while  
+  }
+  
+  //Se chegamos aqui, era melhor no lugar original mesmo, desfazemos a mudança
+  t->n_customers++;
+  t->total_demand += c->demand;
+  c->next = guard_next;
+  
+  
+  if(guard->id == c->id) t->customers = c;
+  else guard->next = c;
+  
+  return 0;
+}
+
+
+//Para fazer a sol inicial aleatória
+void random_start(int* sol,int size){
+  int i = 0;
+  
+  //Inicializamos trivialmente, excluindo o depot (que é o primeiro ponto)
+  for(i=0;i<(size-1);i++){
+    sol[i] = i+1;  
+  }
+  
+  //Embaralhamos
+  for(i=0;i<(size-1);i++){
+    int r = rand() % (size-1);
+    if(r != i){
+    int t = sol[i];
+    sol[i] = sol[r];
+    sol[r] = t;
+    }
+  }
+  
+}
+
+//Função auxiliar para two_opt_swap
+void reverse(truck* t,customer* i,customer* e,customer* before_i,customer* before_e){
+  customer* e_next = e->next;
+  customer* i_next = i->next;
+  customer* c;
+  customer* c2;
+  customer* c3;
+  int size = t->n_customers;
+
+ // printf("Stats X- %d %d %d\n",i_next->id,e_next->id,before_e->id);
+ 
+  //Começamos a inversão mexendo no ponteiro do que vem antes do que será invertido
+  if(before_i == NULL){
+    t->customers = e;
+  }
+  else{
+    before_i->next = e;
+  }
+    
+  //Se for só 2 entra aqui
+  if(i->next->id == e->id){
+    e->next = i;
+    i->next = e_next;
+    return;  
+  }
+  
+  e->next = before_e;
+  i->next = e_next;  
+
+  //Invertemos os ponteiros entre "i" e "e"
+  c = i_next;
+  c2 = i;
+  while(c->id != e->id){
+    c3 = c->next;
+    c->next = c2;
+    c2 = c;
+    c = c3;
+  }
+ 
+}
+
+//Cria vizinhança e calcula novo valor
+int two_opt_swap(truck* trucks,point* depot){
+  int k = 0;
+  int total = add_distances(trucks,depot);
+  int condition = 1;
+  int iter = 0;
+  
+  customer* c = trucks->customers;
+  customer* temp_c;
+  customer* before_c;
+  customer* before_temp_c;
+  truck* t = trucks;
+  
+  //print_trucks(trucks);
+  while(condition == 1){
+    condition = 0;
+    iter++;
+    
+    //Se passar de mil iterações saimos
+    if(iter > 1000) return iter;
+    
+    
+  while(t != NULL){
+    c = t->customers;
+    before_c = NULL;
+    
+    while(c->next != NULL){
+      temp_c = c->next;
+      before_temp_c = temp_c;
+          
+      while(temp_c != NULL){
+        customer* i = c;
+        customer* e = temp_c;
+          
+          //Invertemos a parte sinalizada
+          //print_trucks(trucks);
+          customer* next_i = i->next;
+          reverse(t,i,e,before_c,before_temp_c);
+          //print_trucks(trucks);
+          
+          int new_total = add_distances(trucks,depot); 
+
+          //Se for melhor permance, se não invertemos de volta
+          if(new_total < total){
+            total = new_total;
+          
+            before_c = NULL;
+            c = t->customers;
+            temp_c = c->next;
+            before_temp_c = temp_c;
+            
+            condition = 1;
+          }    
+          else{
+           //Se não foi melhor voltamos atrás 
+           reverse(t,e,i,before_c,next_i);
+         }
+          
+        //Fim do while de temp_c
+        before_temp_c = temp_c;
+        temp_c = temp_c->next;
+      }
+    
+    //Fim do while do c
+    before_c = c;
+    c = c->next;
+    }
+  
+  //Fim do while de t
+  t = t->next;
+  }
+  
+  //Fim do while condition
+  }
+  
+  return iter;
+   
+}
+
+
+//A local search, usando vizinhança de inserção e então 2-opt
+int local_search (point** points,int size,int capacity){
+  /*
+   * "i" , "e" , "k" = contadoras
+   * condition = condição de parada é mudada para zero se não houver mudança ou atingir o número máximo de iterações 
+   * iter = conta iterações
+   * best_value e new_value = guardam o melhor valor nas iterações do algorítimo 
+   * depot = depósito dos caminhões. No nosso caso é sempre o primeiro ponto.
+   */
+  int i = 0;
+  int e = 0;
+  int k = 0;
+  int condition = 1;
+  int iter = 0;
+  point* depot = points[0];
+
+  //Sol é um vetor que dá uma ordem inicial aleatória para colocarmos nos caminhões.
+  int* sol = (int*)malloc((sizeof(int)*size-1));
+  int* new_sol = (int*)malloc((sizeof(int)*size-1));
+  random_start(sol,size);
+  
+  for(i=0;i<size-1;i++){
+    new_sol[i] = sol[i];
+  }
+	
+
+  //Lista de caminhões. Inicializamos o primeiro.  
+  e = 1;
+  truck* trucks = create_truck(e);
+  for(i=0;i<size-1;i++){
+  
+    //Se não existir espaço, precisamos de mais um caminhão
+    if(trucks->total_demand + points[sol[i]]->demand > capacity){
+      //Inserimos na lista
+      e++;
+      truck* temp_truck_creation = create_truck(e);
+      temp_truck_creation->next = trucks;
+      trucks = temp_truck_creation;
+    }
+   
+    //Criamos customer a ser inserido
+    customer* c_temp = create_customer(points[sol[i]],sol[i]);
+    c_temp->next = trucks->customers;
+    
+    //Inserimos o customer no caminhão correto
+    trucks->customers = c_temp;
+    trucks->n_customers++;
+    trucks->total_demand += points[sol[i]]->demand;
+  }
+  
+  //printf("DEPOT X: %lf %lf | %d\n",depot->x,depot->y,depot->demand);
+  //printf("GG\n");
+  
+  //Inicializandos os valores
+  int best_value = add_distances(trucks,depot);
+  int new_value = best_value;
+  
+   //print_trucks(trucks);
+  
+  //Loop do local search
+  while(condition == 1){
+   // printf("condition: %d\n\n", condition);
+    iter++;
+    condition = 0;
+    
+    //Se chega no limite de iterações entra no if
+    if(iter > 1000) return best_value;
+    
+    
+    //Verificamos se zeramos algum caminhão, se sim removemos ele.
+    truck* temp_truck = trucks;
+    truck* temp_truck_back = trucks;
+    while(temp_truck != NULL){
+      
+      if(temp_truck->n_customers == 0){
+        //Se for o original entra aqui
+        if(temp_truck->id == trucks->id) trucks = trucks->next;
+        else temp_truck_back->next = temp_truck->next;
+        //free(temp_truck);
+        temp_truck = temp_truck_back;
+      }
+      temp_truck_back = temp_truck;
+      temp_truck = temp_truck->next;
+    }
+    
+    best_value = add_distances(trucks,depot);
+    
+    temp_truck = trucks;
+    customer* temp_c = temp_truck->customers;
+    
+   while(temp_truck != NULL){
+      temp_c = temp_truck->customers;
+      while(temp_c != NULL){
+	  
+	//Essa função é a nossa função de vizinhança, ela vai tentar inserir em todos os lugares possíveis
+	//Se nenhum for melhor, retorna 0, do contrário 1
+	
+	//print_trucks(trucks);
+	int change = insert_customer(trucks,temp_truck,temp_c,depot,capacity);
+	  
+	  if(change == 1){
+	    condition = 1;
+	  }
+	  
+	//if(condition == 1) temp_c = temp_truck->customers;       
+	        
+	if(change == 1) temp_c = temp_truck->customers;
+	else temp_c = temp_c->next;
+      //Fechamos do while interior
+      }
+      temp_truck = temp_truck->next;
+    //Fechamento do while exterior
+    }
+    
+  //Fim do loop principal
+  }
+  
+  //Executamos então outra busca local, mas dessa vez só dentro de cada caminhão e usando 2-OPT
+  int total_antigo = best_value;
+  iter += two_opt_swap(trucks,depot);
+  best_value = add_distances(trucks,depot);
+  
+  //printf("TOTAL ANTIGO: %d | TOTAL NOVO: %d\n\n",total_antigo,best_value);
+  
+  //print_trucks(trucks);
+  //printf("Numero de iteracoes : %d\n", iter);
+  
+  //Retornamos o valor total do percurso
+  return best_value;
+}
