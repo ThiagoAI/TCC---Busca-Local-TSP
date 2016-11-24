@@ -1,3 +1,3 @@
 all:
-	gcc -o buscalocal main.c point.c localsearch.c -lm
+	gcc -o buscalocal list.c main.c point.c localsearch.c grasp.c -lm
 

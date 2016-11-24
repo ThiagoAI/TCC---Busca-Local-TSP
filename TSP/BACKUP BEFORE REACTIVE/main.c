@@ -159,9 +159,6 @@ int main (int argc, char** argv){
       if(e != i && sol[i] == sol [e]) printf("ERROU!!!!\n");
     }*/	
   
- //Inicializando seed aleatória
- srand(time(NULL));
-  
  //Variáveis auxiliares para encontrarmos os valores 
  clock_t start, end;
  
@@ -175,14 +172,10 @@ int main (int argc, char** argv){
  int worst_result = -1;
  answer ans;
  
- //Para o reactive grasp
- long sum_ans = 0;
- //Array com todos os possíveis valores de alfa
- double alfa_array[20] = {0.05,0.10,0.15,0.20,0.25,0.30,0.35,0.40,0.45,0.50,0.55,0.60,0.65,0.70,0.75,0.80,0.85,0.90,0.95,1};
- //Alfa inicial escolhido entre os 5 primeiros ao acaso
- double alfa = alfa_array[rand() % 5];
- 
  //printf("teste: %d %d %d %d\n\n", atoi(argv[2]),atoi(argv[3]),atoi(argv[4]),atoi(argv[5]));
+ 
+ //Inicializando seed aleatória
+ srand(time(NULL));
  
  //Dependendo da escolha do usuário executa com um dos métodos
   for(i=0;i < n_exec;i++){
@@ -193,7 +186,7 @@ int main (int argc, char** argv){
     }
     else{
      printf("\ngreedy\n");
-     greedy_random_solution(sol,size,distances,alfa);
+     greedy_random_solution(sol,size,distances,atoi(argv[5]));
      }
     end = clock();
     

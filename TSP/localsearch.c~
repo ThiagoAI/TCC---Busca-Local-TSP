@@ -24,7 +24,7 @@ int add_distances(int* sol,point** points,int size,int** distances){
     if(sol[i] > sol[i+1])
       total += distances[sol[i]][sol[i+1]];
     else 
-       total += distances[sol[i+1]][sol[i]];
+      total += distances[sol[i+1]][sol[i]];
   }
 
   if(sol[0] > sol[size-1])
@@ -39,11 +39,6 @@ int add_distances(int* sol,point** points,int size,int** distances){
 void random_start(int* sol,int size){
   int i = 0;
   
-  //Inicializamos trivialmente
-  for(i=0;i<size;i++){
-    sol[i] = i;  
-  }
-  
   //Embaralhamos
   for(i=0;i<size;i++){
     int r = rand() % size;
@@ -53,6 +48,71 @@ void random_start(int* sol,int size){
     sol[r] = t;
     }
   }
+  
+}
+
+//Auxiliar para greedy_start
+int not_alredy_used(int* sol,int i,int e){
+  int k = 0;
+  int z = 0;
+  for(k=0;k<i;k++){
+    if(sol[k] == e){
+     //printf("top kek %d %d : \n",i,e);
+     //for(z = 0; z < i; z++){
+       //printf("!%d\n",sol[z]);
+     //}
+     return 0;
+     }
+  }
+  
+  return 1;
+}
+
+//Para fazer a sol inicial gulosa
+void greedy_start(int* sol,int size,int** distances){
+  int i = 0;
+  int e = 0;
+  int best = -1;
+  int best_e = -1;
+  int temp = 0;
+  
+  int* aux = (int*)malloc(sizeof(int)*size);
+  for(i=0;i<size;i++){
+    aux[i] = i;
+  }
+  
+  //Prendemos o inicial em 0
+  sol[0] = 0;
+  aux[0] = -1;
+  
+  for(i=1;i<size;i++){
+
+    for(e=0;e<size;e++){
+      
+      //Se não forem iguais verificamos qual o melhor
+      if(sol[i-1] != aux[e] && aux[e] != -1){
+
+        if(sol[i-1] > aux[e])
+          temp = distances[sol[i-1]][aux[e]];
+        else 
+          temp = distances[aux[e]][sol[i-1]];
+       
+        if(temp < best || best == -1){
+          best_e = e;
+          best = temp;
+        }
+      }
+      
+    //for e   
+    }
+    sol[i] = best_e;
+    aux[best_e] = -1;
+    best = -1;
+    
+  //for i   
+  }
+  
+  free(aux);
   
 }
 
@@ -94,7 +154,7 @@ void two_opt_swap(int* sol,int* new_sol,int i,int e,int size){
 
 
 //Steepest Descent
-answer local_search_SD (point** points,int size,int** distances){
+answer local_search_SD (int* sol,point** points,int size,int** distances){
   /*sol = solução
    * "i" e "e" = contadora
    * condition = condição de parada é mudada para zero se não houver mudança ou atingir o número máximo de iterações
@@ -111,12 +171,10 @@ answer local_search_SD (point** points,int size,int** distances){
   ans.swaps = 0;
   ans.res_changes = 0;
   
-  int* sol = (int*)malloc((sizeof(int)*size));
   int* new_sol = (int*)malloc((sizeof(int)*size));
   
   //Para guardarmos qual a melhor que encontramos
   int* best_sol = (int*)malloc((sizeof(int)*size));
-  random_start(sol,size);
   
   for(i=0;i<size;i++){
     new_sol[i] = sol[i];
@@ -133,7 +191,7 @@ answer local_search_SD (point** points,int size,int** distances){
     condition = 0;
     
     //Se chega no limite de iterações entra no if
-    if(iter > 100000) return ans;
+    if(iter > 10000) return ans;
     
     best_value = add_distances(sol,points,size,distances);
     
@@ -174,7 +232,7 @@ answer local_search_SD (point** points,int size,int** distances){
   return ans;
 }
 //Best-First Search
-answer local_search_BFS (point** points,int size,int** distances){
+answer local_search_BFS (int* sol,point** points,int size,int** distances){
    /*sol = solução
     * "i" e "e" = contadora
     * condition = condição de parada é mudada para zero se não houver mudança ou atingir o número máximo de iterações
@@ -191,9 +249,7 @@ answer local_search_BFS (point** points,int size,int** distances){
   ans.swaps = 0;
   ans.res_changes = 0;
   
-  int* sol = (int*)malloc((sizeof(int)*size));
   int* new_sol = (int*)malloc((sizeof(int)*size));
-  random_start(sol,size);
   
   for(i=0;i<size;i++){
     new_sol[i] = sol[i];
@@ -251,7 +307,7 @@ answer local_search_BFS (point** points,int size,int** distances){
   return ans;
 }
 //Hill Climbing
-answer local_search_HC (point** points,int size,int** distances,int n){
+answer local_search_HC (int* sol,point** points,int size,int** distances,int n){
     /*sol = solução
    * "i" e "e" = contadora
    * condition = condição de parada é mudada para zero se não houver mudança ou atingir o número máximo de iterações
@@ -268,12 +324,10 @@ answer local_search_HC (point** points,int size,int** distances,int n){
   ans.swaps = 0;
   ans.res_changes = 0;
   
-  int* sol = (int*)malloc((sizeof(int)*size));
   int* new_sol = (int*)malloc((sizeof(int)*size));
   
   //Para guardarmos qual a melhor que encontramos
   int* best_sol = (int*)malloc((sizeof(int)*size));
-  random_start(sol,size);
   
   for(i=0;i<size;i++){
     new_sol[i] = sol[i];
