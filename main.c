@@ -8,6 +8,7 @@
 
 //Argumento 1 = Arquivo
 //Argumento 2 = Escolha (1 é SD, 2 é BFS , 3 é HC)
+//Argumento 3 = Se é pra fazer gulosa ou não
 int main (int argc, char** argv){
   
   //Verifica se o número de argumentos está correto
@@ -107,6 +108,11 @@ int main (int argc, char** argv){
   if(choice == 3){
     start = clock();
     result = local_search_HC(points,size);
+  }
+  
+  //Construimos uma solução gulosa 
+  if(argv[3] == 1){
+  
   }
   
   //Calculando tempo levado
