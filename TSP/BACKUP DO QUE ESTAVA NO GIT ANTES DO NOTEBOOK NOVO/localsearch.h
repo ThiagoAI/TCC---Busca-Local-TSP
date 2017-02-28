@@ -6,7 +6,6 @@
 typedef struct answer_struct {
     int res_changes; 
     int result;
-    int original_result;
     int swaps;
 }answer;
 

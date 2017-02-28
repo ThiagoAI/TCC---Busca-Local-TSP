@@ -30,16 +30,6 @@ int get_point(int_list* list,int i){
   return temp->point;
 }
 
-void print_list(int_list* list){
-  printf("Quantidade: %d\n",list->amount);
-  city* temp = list->cities;
-  while(temp != NULL){
-    printf("|%d\n",temp->point);
-    temp = temp->next;
-  }
-
-}
-
 int_list* destroy_list(int_list* list){
  city* temp = list->cities;
   while(temp != NULL){

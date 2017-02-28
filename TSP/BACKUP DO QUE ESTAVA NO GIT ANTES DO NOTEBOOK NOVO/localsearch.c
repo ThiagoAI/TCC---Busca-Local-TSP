@@ -230,7 +230,6 @@ answer local_search_BFS (int* sol,point** points,int size,int** distances){
   answer ans;
   ans.swaps = 0;
   ans.res_changes = 0;
-  ans.original_result = add_distances(sol,points,size,distances);
   
   int* new_sol = (int*)malloc((sizeof(int)*size));
   
@@ -238,7 +237,7 @@ answer local_search_BFS (int* sol,point** points,int size,int** distances){
     new_sol[i] = sol[i];
   }
   
-  double best_value = ans.original_result;
+  double best_value = add_distances(sol,points,size,distances);
   double new_value = best_value;
 
   //Loop do local search

@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-#include <limits.h>
 
 #include "point.h"
 #include "grasp.h"
@@ -18,17 +17,45 @@ int_list* make_rcl(int* sol,int* aux,int point,int** distances,double alfa,int s
   int temp = 0;
   
   //Inicializando best
-  int best = INT_MAX;
+  int best = -1;
   int best_point = 0;
-  int worst = INT_MIN;
+  int worst = -1;
   int worst_point = 0;
-  int inicial = -1;
-   
+  
+  if(point != 0){
+    if(sol[i] > point){
+      best = distances[sol[0]][point];
+      best_point = 0;
+      worst = distances[sol[0]][point];
+      worst_point = 0;
+    }
+    else{
+      best = distances[point][sol[0]];
+      best_point = 0;
+      worst = distances[point][sol[0]];
+      worst_point = 0;
+    }
+   }
+   else{
+     if(sol[i] > point){
+       best = distances[sol[1]][point];
+       best_point = 1;
+       worst = distances[sol[1]][point];
+       worst_point = 0;
+     }
+     else{
+       best = distances[point][sol[1]];
+       best_point = 1;
+       worst = distances[point][sol[1]];
+       worst_point = 0;
+     }
+   }
+  
   //Pegamos o menor e o maior
   for(i=0;i<size;i++){
-    if(sol[i] != point && aux[sol[i]] != -1){
-     
-      if(sol[i] > point){
+    if(i != point){
+    
+      if(sol[i] > best_point){
          temp = distances[sol[i]][point];
       }
       else{
@@ -37,17 +64,14 @@ int_list* make_rcl(int* sol,int* aux,int point,int** distances,double alfa,int s
  
       if(temp < best){
         best = temp;
-        best_point = sol[i];
+        best_point = i;
       }
       if(temp > worst){
         worst = temp;
-        worst_point = sol[i];
+        worst_point = i;
       }
     }
   }
-  
-  add_list(rcl,best_point);
-  //printf("%d %d menor e maior\n\n\n",best,worst);
 
   //For principal parar achar os membros da rcl
   for(i=0;i<size;i++){
@@ -65,7 +89,7 @@ int_list* make_rcl(int* sol,int* aux,int point,int** distances,double alfa,int s
  
         //Critério para entrar na RCL
  	if(temp <= best + alfa*(worst - best)){
- 	  add_list(rcl,sol[i]);
+ 	  add_list(rcl,i);
  	}   
  	
    //printf("temp - %d - %d\n",temp,sol[i]); 
@@ -105,16 +129,15 @@ void greedy_random_solution(int* sol,int size,int** distances,double alfa){
   aux[point] = -1;
   
   //printf("ponto inicial e %d\n",point);
-
+  
   //For principal 
   for(i=0;i<size-1;i++){
     //Criamosa rcl e escolhemos um para ser o próximo
     int_list* rcl = make_rcl(sol,aux,point,distances,alfa,size);
-   
     int random = rand() % rcl->amount;
     
     //Damos valor
-    copy[i+1] = get_point(rcl,random);
+    copy[i+1] = get_point(rcl,random);;
     aux[copy[i+1]] = -1;
     point = copy[i+1]; 
     
@@ -123,10 +146,8 @@ void greedy_random_solution(int* sol,int size,int** distances,double alfa){
     //Livramos espaço da rcl
     destroy_list(rcl);
   }
-
-  for(i=0;i<size;i++){
-   sol[i] = copy[i];
-   }
+  
+  for(i=0;i<size;i++) sol[i] = copy[i];
   
   //TODO remover aqui
   int z = 0;
@@ -138,7 +159,6 @@ void greedy_random_solution(int* sol,int size,int** distances,double alfa){
        }
     }
   }
-  
   //frees dos arrays auxiliares
   free(aux);
   free(copy);
